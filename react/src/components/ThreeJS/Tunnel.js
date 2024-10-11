@@ -25,7 +25,7 @@ import { RenderPass } from 'postprocessing';
 import { useFBX } from '@react-three/drei';
 import FakeGlowMaterial from './FakeGlowMaterial';
 import AudioVisualizer from './AudioVisualizer';
-import { DEG2RAD } from 'three/src/math/MathUtils.js';
+import { DEG2RAD, degToRad, radToDeg } from 'three/src/math/MathUtils.js';
 import ManyCPUs from './ManyCPUs';
 
 const socket = io('http://localhost:4000'); // Update the URL if your server runs on a different port
@@ -38,17 +38,85 @@ function easeIn(t) {
   return A + (B - A) * (t * t * t * t * t) // quadratic ease-in
 }
 
+function cubicBezier(t, P0, P1, P2, P3) {
+  let oneMinusT = 1 - t;
+  return oneMinusT * oneMinusT * oneMinusT * P0 + 
+         3 * oneMinusT * oneMinusT * t * P1 + 
+         3 * oneMinusT * t * t * P2 + 
+         t * t * t * P3;
+}
+
 const introUpdate = (frame, gltf, whiteoutQuad, bloomRef, setBloomIntensity, effectComposerRef,
   cylinder, time, delta, camera,
   action, mixerRef, tunnelCamGLB, set, chipLogoPlane, fbxLight,
-  introTime, markersRef,audioVizContainer
+  introTime, markersRef,audioVizContainer,tsryDecalCPU
 ) => {
+
+
+  console.log("INTRO UPDATE",camera);
   
+  if (introTime >= 2.5 && introTime <= 3.1) {
+    let P0 = 7.1829;
+    let P3 = -5.0266;
+
+    let P1 = 6;
+    let P2 = 5;
+
+    const normalizedT = (introTime - 2.5) / .6;
+    const val = cubicBezier(normalizedT,P0,P1,P2,P3);
+    console.log("VAL",val)
+
+
+    camera.position.set(camera.position.x,camera.position.y,val);
+  }
+
+  if (introTime >= 3 && introTime < 7.1){
+    camera.setFocalLength(66);
+    console.log("CAM ROT",camera)
+    camera.rotateZ(degToRad(-.7));
+    camera.updateProjectionMatrix();
+    markersRef.current[3] = true;
+
+
+  } else if (introTime >= 7.1) {
+
+    if (markersRef.current[4] == false) {
+      console.log("STATE CAMERA",camera);
+      let newPos = new THREE.Vector3(0.342805,1.65965,7.1829);
+
+      if (camera.parent) {
+        camera.parent.worldToLocal(newPos);
+        camera.position.set(newPos.x,newPos.y,newPos.z)
+      }
+
+      camera.setRotationFromEuler(new THREE.Euler(0,0,0));
+
+      camera.setFocalLength(40);
+      camera.near = .01;
+
+      camera.updateProjectionMatrix();
+      markersRef.current[4] = true;
+    }
+
+  }
+
+  if (introTime >= 9) {
+    tsryDecalCPU.material.uniforms.universalAlpha.value = 1.0;
+      markersRef.current[6] = true;
+  }
+
+  if (introTime < 9) {
+    tsryDecalCPU.material.uniforms.universalAlpha.value = 0.0;
+  }
+
+
+ // camera.rotation.x += .1;
+
   // tweak this until the audio is in sync with the animations
   const AUDIO_SYSTEM_LATENCY = .1;
   introTime -= AUDIO_SYSTEM_LATENCY;
 
-  if (introTime >= 1.438 && markersRef.current[1] == false) {
+  /*if (introTime >= 1.438 && markersRef.current[1] == false) {
     markersRef.current[1] = true;
     audioVizContainer.position.x += 1;
   } else if (introTime >= 2.877 && markersRef.current[0] == false) {
@@ -60,7 +128,7 @@ const introUpdate = (frame, gltf, whiteoutQuad, bloomRef, setBloomIntensity, eff
   } else if (introTime >= 7.077 && markersRef.current[3] == false) {
     markersRef.current[3] = true;
     audioVizContainer.position.x += 1;
-  }
+  }*/
 
 }
 
@@ -221,6 +289,17 @@ const TunnelActual = forwardRef((props,ref) => {
     }
   }, [audioVizRef])
 
+
+  const [audioVizVisible, setAudioVizVisible] = useState(true);
+
+  useEffect(() => {
+    if (audioVizVisible) {
+      audioVizContainer.position.set(35.32993087768555, 2.8225765228271484, -20.40278434753418)
+    } else {
+      audioVizContainer.position.set(35.32993087768555 + 1000, 2.8225765228271484, -20.40278434753418)
+    }
+  }, [audioVizVisible])
+
   // Exposing the function to the parent via the ref
   useImperativeHandle(ref, () => ({
       startOutro() {
@@ -228,9 +307,13 @@ const TunnelActual = forwardRef((props,ref) => {
         outroFrame.current = 0;
         if (audioVizRef.current) {
           audioVizRef.current.setSong_({
-            src: "/assets/audio/DarkHorseLogo.mp3", name: "Dark Horse Logo"
+            src: "/assets/audio/darkHorseLouderVolume.mp3", name: "Dark Horse Logo"
           });
           audioVizRef.current.setIsPrestream_(true);
+          setAudioVizVisible(false);
+          audioVizRef.current.setVisible_(false);
+
+
         }
         return;
       },
@@ -246,9 +329,14 @@ const TunnelActual = forwardRef((props,ref) => {
           introStartTime.current = v;
           audioVizRef.current.setIsPrestream_(false);
           audioVizRef.current.setSong_({
-            src: "/assets/audio/DarkHorseLogo.mp3", name: "Dark Horse Logo"
+            src: "/assets/audio/darkHorseLouderVolume.mp3", name: "Dark Horse Logo"
           });
+          audioVizRef.current.setVisible_(false);
+          setAudioVizVisible(false);
+
         }
+        setAudioVizVisible(false);
+
         return;
       }
  
@@ -263,6 +351,31 @@ const TunnelActual = forwardRef((props,ref) => {
     // we need t ot
     playingIntro.current = false;
     socket.emit("endIntro");
+  }
+
+  const startIntroLocal = () => {
+    console.log("START INTRO",audioVizRef);
+    playingIntro.current = true;
+    introFrame.current = true;
+
+ 
+  
+    if (audioVizRef.current) {
+ 
+      const v = audioVizRef.current.getAudioContext().currentTime;
+      console.log("START INTRO TIME",v)
+      introStartTime.current = v;
+      audioVizRef.current.setIsPrestream_(false);
+      audioVizRef.current.setSong_({
+        src: "/assets/audio/darkHorseLouderVolume.mp3", name: "Dark Horse Logo"
+      });
+      audioVizRef.current.setVisible_(false);
+      setAudioVizVisible(false);
+
+    }
+    setAudioVizVisible(false);
+
+    return;
   }
 
   const vertexShader = `
@@ -292,8 +405,6 @@ const TunnelActual = forwardRef((props,ref) => {
   float g(float t,vec2 uv) {
       return sin(3.*t+uv.y*20.);
   }
-
- 
 
   void main() {
     vUv = uv;
@@ -535,6 +646,8 @@ float noise(float x) {
 
   uniform float modeLerp;
   uniform sampler2D tex1;
+
+  uniform float universalAlpha;
   
 
   void main() {
@@ -553,6 +666,7 @@ float noise(float x) {
 
       vec3 bgBlueColor = vec3(0.08627450980392157, 0.1803921568627451, 0.36470588235294116);
   
+   
 
       vec3 col = primBlueColor3*gridPoint;
       if (length(col) <= .2) {
@@ -562,11 +676,11 @@ float noise(float x) {
 
       vec3 finalCol = mix(col,vec3(1.,1.,1.),modeLerp);
 
-      vec2 rotatedUV = vec2(1. - vUv.x,1. - vUv.y);
+      vec2 rotatedUV = vec2(vUv.x,vUv.y);
       vec4 texAlpha = texture(tex1,rotatedUV);
 
       // Output to screen
-      gl_FragColor = vec4(finalCol, texAlpha.z);
+      gl_FragColor = vec4(finalCol, texAlpha.z * universalAlpha);
   
   }
 
@@ -646,6 +760,15 @@ const plane061_fragmentShader = `
 
   const fbxScene = useFBX("/assets/models/outroScene1.fbx")
 
+  const fbxIntro = useFBX("/assets/models/intro11.fbx")
+
+  console.log("FBX INTRO",fbxIntro);
+
+  const camera002 = fbxIntro.getObjectByName("Camera002");
+
+  const tsryDecalCPU = fbxIntro.getObjectByName("dogDecalCPU")
+
+
 
   const gltfCam = useLoader(GLTFLoader,"/assets/models/camAndAudioVizContainer3.glb")
 
@@ -659,6 +782,8 @@ const plane061_fragmentShader = `
 
 
   fbxScene.scale.set(.01, .01, .01)
+
+  fbxIntro.scale.set(.01,.01,.01)
 
   const blueCam = blueChipGLTF.scene.getObjectById(302);
 
@@ -694,7 +819,6 @@ const plane061_fragmentShader = `
 
 
   const whiteoutQuad = useMemo(() => {
-
     return fbxScene.getObjectByName("Plane");
   },)
 
@@ -724,6 +848,7 @@ const plane061_fragmentShader = `
     vertexShader: logoPlaneVertexShader,
     fragmentShader: logoPlaneFragmentShader,
     transparent: true,
+    opacity: 0,
     uniforms: {
       // Define uniforms here if needed
       time: { value: 0.0 },
@@ -735,12 +860,17 @@ const plane061_fragmentShader = `
       }, {}),
       tex1: {
         value: new THREE.TextureLoader().load("/assets/images/testausLiveLogo.png")
+      },
+      universalAlpha: {
+        value: 0.0
       }
     },
 
   });
 
+  tsryDecalCPU.material = logoPlaneMaterial;
 
+  tsryDecalCPU.material.opacity = 0;
   
   whiteoutQuad.material = useMemo(() => new MeshStandardMaterial({
       emissive: new THREE.Color(0xffffff),
@@ -797,6 +927,8 @@ const plane061_fragmentShader = `
 
  const plane061 = gltfCam.scene.getObjectByName("Plane061");
 
+ const defaultViewCameraPos = new THREE.Vector3(40,6,0)
+ const defaultViewCameraQuaternion = new THREE.Quaternion(0,0,0,1);
 
 
  useEffect(() => {
@@ -806,6 +938,12 @@ const plane061_fragmentShader = `
   
  }, [])
 
+ camera002.far = 1000000;
+ camera002.near = 1;
+ camera002.updateProjectionMatrix();
+
+ console.log("CAMERA002",camera002)
+ //set({camera: camera002})
 
 
 
@@ -831,15 +969,17 @@ const plane061_fragmentShader = `
   const cube058 = gltfCam.scene.getObjectByName("Cube058");
 
 
-
+  
 
  // audioVizContainer.lookAt(40.39,6.018,0.15)
  // audioVizContainer.rotateX(THREE.MathUtils.degToRad(90));
   //audioVizContainer.updateProjectionMatrix();
- gltfCam.cameras[0].near = 1;
+ gltfCam.cameras[0].near = .1;
  gltfCam.cameras[0].updateProjectionMatrix();
 
-  set({camera: gltfCam.cameras[0]})
+ console.log("GLTFCAM",gltfCam.cameras[0])
+
+ set({camera: gltfCam.cameras[0]})
  // set({camera:
  //   blueCam
 //  })
@@ -850,17 +990,18 @@ const plane061_fragmentShader = `
   const mixerRef = useRef(null);
 
 
-  mixerRef.current = new THREE.AnimationMixer(fbxScene);
+  mixerRef.current = new THREE.AnimationMixer(fbxIntro);
 
-  const clips = fbxScene.animations;
+  const clips = fbxIntro.animations;
 
-  const clip = THREE.AnimationClip.findByName(clips, "cpuRoot|chipFly");
+  const clip = THREE.AnimationClip.findByName(clips, "Scene");
   const action = mixerRef.current.clipAction(clip);
   //console.log("gltf clip", clip, action);
   //gltf.cameras[0].setFocalLength(15);
   gltf.cameras[0].near = .1;
   gltf.cameras[0].updateProjectionMatrix();
 
+  action.play();
 
 
  // set({ camera: gltf.cameras[0] });
@@ -920,6 +1061,8 @@ const plane061_fragmentShader = `
     false,false,false,false,false,false
   ]);
 
+  const prevAudioTime = useRef(0);
+
   // prev audioContext.currentTime (last frame during intro update)
   const prevIntroTime = useRef(-1);
 
@@ -962,6 +1105,8 @@ const plane061_fragmentShader = `
   const audioVizContainerOGposition = new THREE.Vector3(45.23, 20.403, 2.8226);
   
   audioVizContainer.position.set(35.32993087768555, 2.8225765228271484, -20.40278434753418)
+
+
   console.log("AUDIOVIZ",audioVizContainer);
   //audioVizContainer.position.x -= 8;
  // audioVizContainer.position.set(audioVizContainerOGposition.x,audioVizContainerOGposition.y,
@@ -977,7 +1122,7 @@ const plane061_fragmentShader = `
    // console.log(state.get().camera,"currcam")
 
 
-  
+ 
   //  console.log("REL",gltfCam.cameras[0].localToWorld(gltfCam.cameras[0].position))
    // console.log('rel',gltfCam.cameras[0].worldToLocal(audioVizContainer.localToWorld(audioVizContainer.position)))
 
@@ -988,7 +1133,7 @@ const plane061_fragmentShader = `
    //effectComposerRef.current.ren
 
    // state.gl.clear();
-
+ 
   //  state.gl.render(state.scene,cameraTop);
 
   //  state.gl.clearDepth();
@@ -1025,7 +1170,24 @@ const plane061_fragmentShader = `
     const currentGlobalFrame = globalFrame.current + 1;
     globalFrame.current++;
 
-  
+    if (globalFrame.current == 100) {
+      startIntroLocal();
+      console.log("STATE CAMERA",state.camera);
+      let newPos = new THREE.Vector3(0.342805,1.65965,7.1829);
+
+      if (state.camera.parent) {
+        state.camera.parent.worldToLocal(newPos);
+        state.camera.position.set(newPos.x,newPos.y,newPos.z)
+      }
+
+      state.camera.setFocalLength(30);
+      state.camera.near = .01;
+
+      state.camera.updateProjectionMatrix();
+
+     // state.camera.position.set(newPos);
+ //     set({camera: camera002})
+    }
 
 
     if (currentGlobalFrame < 400) {
@@ -1067,21 +1229,43 @@ const plane061_fragmentShader = `
       }
     } else if (playingIntro.current == true) {
       let introTime;
-     
+      let audioDeltaTime = 0;
+      
+      if (audioContextRef.current) {
+        audioDeltaTime = audioContextRef.current.currentTime - prevAudioTime.current;
+        prevAudioTime.current = audioContextRef.current.currentTime;
+      }
+
+      console.log("audio delta time",audioDeltaTime,audioContextRef.current,prevAudioTime.current);
+
       if (audioContextRef.current && introStartTime.current) {
+     
         introTime = audioContextRef.current.currentTime - introStartTime.current - (audioContextRef.current.baseLatency +audioContextRef.current.outputLatency);
       }
       console.log("INTRO TIME CURRENT",introTime,audioContextRef,introStartTime);
 
+      // the intro song is about 14.2 seconds
       if (introTime > 14.2) {
         endIntro();
         introFrame.current = 0;
         playingIntro.current = false;
 
+        // set camera back to the default one, that also has the
+        // audio viz positioned in the view
+        state.camera.position.set(defaultViewCameraPos.x,defaultViewCameraPos.y,defaultViewCameraPos.z)
+        state.camera.rotation.set(defaultViewCameraQuaternion.x,defaultViewCameraQuaternion.y,defaultViewCameraQuaternion.z,defaultViewCameraQuaternion.w)
+        state.camera.updateProjectionMatrix();
       } else {
        introUpdate(introFrame.current++, gltf, whiteoutQuad, bloomRef, setBloomIntensity, effectComposerRef,
           cylinder, time, delta, get().camera, action, mixerRef,
-          tunnelCamGLB, set, chipLogoPlane,fbxLight, introTime,markersRef, audioVizContainer)
+          tunnelCamGLB, set, chipLogoPlane,fbxLight, introTime,markersRef, audioVizContainer,
+          tsryDecalCPU
+        )
+
+          if (mixerRef.current) {
+            mixerRef.current.update(audioDeltaTime || delta);
+          }
+      
 
       }
   
@@ -1225,7 +1409,7 @@ const plane061_fragmentShader = `
           kernelSize={64}
           luminanceThreshold={.3}
           luminanceSmoothing={.05}
-          intensity={presetInt == 1 ? .001 : .1}
+          intensity={presetInt == 1 ? .001 : .05}
         />
       </EffectComposer>
 
@@ -1257,22 +1441,16 @@ const plane061_fragmentShader = `
    
    {/*}   
     */}
-
-    <primitive object={fbxScene}/>
-      <primitive object={tunnelCamGLB.scene} />
-      <primitive object={clonedCylinder} ref={cloneRef}/>
-    <primitive object={cylinderNewGLTF.scene}/>
-
+   
     <primitive object={gltfCam.scene}/>
+  
+ 
 
-    <primitive object={blueChipGLTF.scene}/>
-
-    <ManyCPUs visible={presetInt == 1}/>
-
+    <primitive object={fbxIntro}/>
 
    <AudioVisualizer blueChipGLTF={blueChipGLTF}
     gltfCam={gltfCam} plane061={plane061}
-    intelMaterial={intelMaterial} goldMaterial={goldMaterial} visible={true}
+    intelMaterial={intelMaterial} goldMaterial={goldMaterial} 
     ref={audioVizRef}
     />
       
@@ -1300,10 +1478,14 @@ const Tunnel_ = forwardRef((props,ref) => {
       }
     }));
 
+    // stop camera from getting animated
+
   return (
     <Canvas style={{
       width: '100vw', height: '100vh', display: 'block'
     }}>
+
+
 
 
 

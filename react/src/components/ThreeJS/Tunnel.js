@@ -337,6 +337,21 @@ const TunnelActual = forwardRef((props,ref) => {
         }
         setAudioVizVisible(false);
 
+        const camera = get().camera;
+
+        
+        let newPos = new THREE.Vector3(0.342805,1.65965,7.1829);
+  
+        if (camera.parent) {
+          camera.parent.worldToLocal(newPos);
+          camera.position.set(newPos.x,newPos.y,newPos.z)
+        }
+  
+        camera.setFocalLength(30);
+        camera.near = .01;
+  
+        camera.updateProjectionMatrix();
+
         return;
       }
  
@@ -1170,7 +1185,7 @@ const plane061_fragmentShader = `
     const currentGlobalFrame = globalFrame.current + 1;
     globalFrame.current++;
 
-    if (globalFrame.current == 100) {
+    if (false && globalFrame.current == 100) {
       startIntroLocal();
       console.log("STATE CAMERA",state.camera);
       let newPos = new THREE.Vector3(0.342805,1.65965,7.1829);

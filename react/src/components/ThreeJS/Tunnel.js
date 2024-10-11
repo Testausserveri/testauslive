@@ -1267,7 +1267,7 @@ const plane061_fragmentShader = `
 
         // set camera back to the default one, that also has the
         // audio viz positioned in the view
-        state.camera.position.set(defaultViewCameraPos.x,defaultViewCameraPos.y,defaultViewCameraPos.z)
+        state.camera.position.set(defaultViewCameraPos.x,defaultViewCameraPos.y+100,defaultViewCameraPos.z)
         state.camera.rotation.set(defaultViewCameraQuaternion.x,defaultViewCameraQuaternion.y,defaultViewCameraQuaternion.z,defaultViewCameraQuaternion.w)
         state.camera.updateProjectionMatrix();
       } else {
@@ -1424,7 +1424,7 @@ const plane061_fragmentShader = `
           kernelSize={64}
           luminanceThreshold={.3}
           luminanceSmoothing={.05}
-          intensity={presetInt == 1 ? .001 : .05}
+          intensity={presetInt == 1 ? .05 : .05}
         />
       </EffectComposer>
 

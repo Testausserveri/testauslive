@@ -353,7 +353,10 @@ const AudioVisualizer = forwardRef((props,ref) => {
 
     points.push(1.3,0,0)
 
-    lineRef.current.setPoints(points);
+    if (lineRef.current) {
+      lineRef.current.setPoints(points);
+    }
+ 
 
     //console.log("chunked points",points);
 

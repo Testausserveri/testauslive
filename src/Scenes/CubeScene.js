@@ -5,9 +5,7 @@ import { useEffect } from "react";
 import { useControls } from "leva";
 
 
-function Tunnel() {
-
-    const {lol} = useControls({lol: 2})
+function CubeScene() {
 
     return (
         <>
@@ -16,11 +14,11 @@ function Tunnel() {
                 <OrbitControls />
                 <mesh>
                     <boxGeometry />
-                    <meshBasicMaterial color="orange" />
+                    <meshBasicMaterial color="blue" />
                 </mesh>
             </Canvas>
         </>
     )
 }
 
-export default Tunnel;
+export default CubeScene;

@@ -1,33 +1,23 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import Tunnel from './Scenes/Tunnel';
+import CubeScene from './Scenes/CubeScene';
 import { useState, useEffect, useRef } from 'react';
 import "./App.css";
-
-
 
 
 const App = () => {
 
   const scenes = [
     {
-      component: <Tunnel/>,
-      title: "Tunnel / Procedural",
-      url: "/scene/tunnel",
+      component: <CubeScene/>,
+      title: "Cube",
+      url: "/scene/Cube",
     }, 
-    {
-      component: <Tunnel/>,
-      title: "Tunnel 2 / Procedural",
-      url: "/scene/tunnel2",
-    }
   ];
 
 
   return (
   <Router>
-    
-
-  
 
     <div id='panel'>
       <div id='header'>
@@ -44,11 +34,9 @@ const App = () => {
       </div>
     </div>
      
-
-
     <div className='canvas-container'>
       <Routes>
-        <Route path="/scene/tunnel" element={<Tunnel/>}/>
+        <Route path="/scene/cube" element={<CubeScene/>}/>
       </Routes>
     </div>
    

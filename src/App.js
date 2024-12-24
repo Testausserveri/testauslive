@@ -1,17 +1,18 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import CubeScene from './Scenes/CubeScene';
+import CubeScene from './scenes/ManyCPUs';
 import { useState, useEffect, useRef } from 'react';
 import "./App.css";
+import ManyCPUsScene from './scenes/ManyCPUs';
 
 
 const App = () => {
 
   const scenes = [
     {
-      component: <CubeScene/>,
-      title: "Cube",
-      url: "/scene/Cube",
+      component: <ManyCPUsScene/>,
+      title: "Many CPUs (Testauslive 2024)",
+      url: "/scene/ManyCPUs",
     }, 
   ];
 
@@ -36,7 +37,7 @@ const App = () => {
      
     <div className='canvas-container'>
       <Routes>
-        <Route path="/scene/cube" element={<CubeScene/>}/>
+        <Route path="/scene/ManyCPUs" element={<ManyCPUsScene/>}/>
       </Routes>
     </div>
    

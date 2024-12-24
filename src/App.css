@@ -21,7 +21,8 @@ body {
   left: 0px;
   z-index: 100;
   overflow: auto;
-  background-color: #0D0D0D;
+  background-color: #08087E;
+  border-right: 5px solid #2A59D9;
 }
 
 #header {
@@ -32,7 +33,7 @@ body {
   text-align: start;
   padding: 20px;
   padding-bottom: 20px;
-  border-bottom: 5px solid #DBDBDB;
+  border-bottom: 5px solid #2A59D9;
 }
 
 #scenes {
